@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   mysql:
-    image: postgres:latest
+    image: postgres
     container_name: cosmo_cats_db
     environment:
       POSTGRES_PASSWORD: 123

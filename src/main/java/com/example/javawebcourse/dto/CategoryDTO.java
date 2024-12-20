@@ -9,8 +9,7 @@ import lombok.Value;
 
 @Value
 @Builder
-public class CategoryDto {
-    @NotNull(message = "Category ID is required and cannot be null.")
+public class CategoryDTO {
     UUID id;
 
     @NotBlank(message = "Category name is required and cannot be blank.")

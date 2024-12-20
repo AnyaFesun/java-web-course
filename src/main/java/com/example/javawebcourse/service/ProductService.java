@@ -7,69 +7,70 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import com.example.javawebcourse.dto.ProductDTO;
+import com.example.javawebcourse.mapper.ProductMapper;
 import org.springframework.stereotype.Service;
 
 import com.example.javawebcourse.domain.Product;
 import com.example.javawebcourse.web.exception.DuplicateProductNameException;
 import com.example.javawebcourse.web.exception.ProductNotFoundException;
 
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 @Service
 public class ProductService {
 
-    private final Map<UUID, Product> productsById = new ConcurrentHashMap<>();
-    private final Map<String, Product> productsByName = new ConcurrentHashMap<>();
+    private final List<Product> products = new ArrayList<>();
+    private final ProductMapper productMapper;
 
-    public Product createProduct(Product product) {
-        if (productsByName.containsKey(product.getName().toLowerCase())) {
-            throw new DuplicateProductNameException(product.getName());
-        }
-
-        Product newProduct = buildProduct(product);
-        productsById.put(newProduct.getId(), newProduct);
-        productsByName.put(newProduct.getName().toLowerCase(), newProduct);
-
-        return newProduct;
+    public ProductService(ProductMapper productMapper) {
+        this.productMapper = productMapper;
     }
 
-    public List<Product> getAllProducts() {
-        return productsById.values().stream().collect(Collectors.toList());
+    public List<ProductDTO> getAllProducts() {
+        return products.stream()
+                .map(productMapper::toProductDTO)
+                .toList();
     }
 
-    public Product getProductById(UUID id) {
-        return Optional.ofNullable(productsById.get(id))
-                .orElseThrow(() -> new ProductNotFoundException(id));
+    public ProductDTO getProductById(UUID id) {
+        return products.stream()
+                .filter(product -> product.getId().equals(id))
+                .findFirst()
+                .map(productMapper::toProductDTO)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
     }
 
-    public Product updateProduct(UUID id, Product updatedProduct) {
-        Product existingProduct = productsById.get(id);
-        if (existingProduct == null) {
-            throw new ProductNotFoundException(id);
-        }
+    public ProductDTO createProduct(ProductDTO productDTO) {
+        Product product = productMapper.toProduct(productDTO);
+        product = product.toBuilder().id(UUID.randomUUID()).build();
+        products.add(product);
+        return productMapper.toProductDTO(product);
+    }
 
-        Product updated = buildProduct(updatedProduct);
-        productsById.put(id, updated);
-        productsByName.put(updated.getName().toLowerCase(), updated);
+    public ProductDTO updateProduct(UUID id, ProductDTO productDTO) {
+        Product product = products.stream()
+                .filter(p -> p.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        return updated;
+        products.remove(product);
+
+        Product updatedProduct = productMapper.toProduct(productDTO).toBuilder().id(id).build();
+        products.add(updatedProduct);
+        return productMapper.toProductDTO(updatedProduct);
     }
 
     public void deleteProduct(UUID id) {
-        Product product = productsById.remove(id);
-        if (product == null) {
-            throw new ProductNotFoundException(id);
-        }
+        Product product = products.stream()
+                .filter(p -> p.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        productsByName.remove(product.getName().toLowerCase());
-    }
-
-    private Product buildProduct(Product product) {
-        return Product.builder()
-                .id(UUID.randomUUID())
-                .category(product.getCategory())
-                .name(product.getName())
-                .description(product.getDescription())
-                .origin(product.getOrigin())
-                .price(product.getPrice())
-                .build();
+        products.remove(product);
     }
 }
